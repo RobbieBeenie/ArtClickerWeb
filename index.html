@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Prevents zooming and scales layout correctly for mobile viewports -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cookie Clicker Web Edition</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      /* Prevents text selection on rapid tapping */
+      user-select: none;
+      -webkit-user-select: none;
+      /* Removes highlight box on mobile tap */
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #2c3e50;
+      color: #ecf0f1;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      /* Prevents pull-to-refresh on mobile browsers */
+      overscroll-behavior: none;
+      touch-action: manipulation;
+    }
+
+    /* Left side: Main Clicker Area */
+    .game-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+
+    /* Sound Toggle Controls */
+    .audio-controls {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .audio-btn {
+      background-color: #34495e;
+      color: #ecf0f1;
+      border: 1px solid #7f8c8d;
+      padding: 8px 12px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .score-container {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #score-display {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .sub-stat {
+      font-size: 1rem;
+      color: #bdc3c7;
+      margin: 3px 0 0 0;
+    }
+
+    #cpc-display {
+      color: #f1c40f;
+    }
+
+    .cookie-container {
+      position: relative;
+    }
+
+    #cookie-img {
+      width: 600px;
+      height: 660px;
+      cursor: pointer;
+      transition: transform 0.05s ease-in-out;
+      /* Disables native dragging of image on mobile */
+      -webkit-user-drag: none;
+      /* Prevents touch gestures like double-tap zoom on the cookie */
+      touch-action: manipulation;
+    }
+
+    #cookie-img:active {
+      transform: scale(0.90);
+    }
+
+    /* Right side: Store Panel */
+    .store-section {
+      width: 300px;
+      background-color: #34495e;
+      border-left: 2px solid #1a252f;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      box-shadow: -4px 0 10px rgba(0, 0, 0, 0.3);
+      overflow-y: auto; /* Allows scrolling inside the store if screen is small */
+    }
+
+    .store-section h2 {
+      margin-top: 0;
+      text-align: center;
+      color: #f1c40f;
+    }
+
+    .btn-upgrade {
+      width: 100%;
+      background-color: #7f8c8d;
+      color: #fff;
+      border: none;
+      padding: 12px 15px;
+      border-radius: 8px;
+      cursor: not-allowed;
+      text-align: left;
+      transition: background-color 0.2s, opacity 0.2s;
+      /* Removes mobile button click delay */
+      touch-action: manipulation;
+    }
+
+    .btn-upgrade.affordable-click {
+      background-color: #2980b9;
+      cursor: pointer;
+    }
+
+    .btn-upgrade.affordable-building {
+      background-color: #27ae60;
+      cursor: pointer;
+    }
+
+    .btn-title {
+      font-weight: bold;
+      font-size: 0.95rem;
+      display: block;
+    }
+
+    .btn-info {
+      font-size: 0.8rem;
+      display: block;
+      margin-top: 4px;
+    }
+
+    /* --- MOBILE RESPONSIVE MEDIA QUERY --- */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column; /* Stack cookie area on top of store */
+      }
+
+      .game-section {
+        flex: 1;
+        padding-top: 50px;
+      }
+
+      #cookie-img {
+        width: 160px;
+        height: 160px;
+      }
+
+      #score-display {
+        font-size: 2rem;
+      }
+
+      .store-section {
+        width: 100%;
+        height: 45vh; /* Store takes bottom 45% of screen */
+        border-left: none;
+        border-top: 2px solid #1a252f;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Game Click Area -->
+  <div class="game-section">
+    <!-- Audio Controls -->
+    <div class="audio-controls">
+      <button class="audio-btn" id="music-toggle" onclick="toggleMusic()">🎵 Music: OFF</button>
+      <button class="audio-btn" id="sfx-toggle" onclick="toggleSFX()">🔊 SFX: ON</button>
+    </div>
+
+    <div class="score-container">
+      <h1 id="score-display">0 Cookies</h1>
+      <p class="sub-stat" id="cpc-display">per click: 1</p>
+      <p class="sub-stat" id="cps-display">per second: 0</p>
+    </div>
+
+    <div class="cookie-container">
+      <img id="cookie-img" src="D:/Pictures/ArtHead2.png" alt="Cookie" onerror="this.src='https://via.placeholder.com/200/d35400/ffffff?text=Cookie'">
+    </div>
+  </div>
+
+  <!-- Store Sidebar -->
+  <div class="store-section">
+    <h2>Store</h2>
+
+    <button class="btn-upgrade" id="click-btn" onclick="buyClickUpgrade()">
+      <span class="btn-title">Reinforced Index</span>
+      <span class="btn-info" id="click-info">Cost: 10 | (+1/click) | Level: 0</span>
+    </button>
+
+    <button class="btn-upgrade" id="cursor-btn" onclick="buyCursor()">
+      <span class="btn-title">Cursor</span>
+      <span class="btn-info" id="cursor-info">Cost: 15 | (+1/s) | Owned: 0</span>
+    </button>
+
+    <button class="btn-upgrade" id="grandma-btn" onclick="buyGrandma()">
+      <span class="btn-title">Grandma</span>
+      <span class="btn-info" id="grandma-info">Cost: 100 | (+8/s) | Owned: 0</span>
+    </button>
+
+    <button class="btn-upgrade" id="farm-btn" onclick="buyFarm()">
+      <span class="btn-title">Farm</span>
+      <span class="btn-info" id="farm-info">Cost: 1,100 | (+47/s) | Owned: 0</span>
+    </button>
+  </div>
+
+  <script>
+    // --- AUDIO SYSTEM ---
+    const clickSound = new Audio('cookie-click.mp3');
+    const bgMusic = new Audio('background-music.mp3');
+    bgMusic.loop = true;
+    bgMusic.volume = 0.4;
+
+    let musicEnabled = false;
+    let sfxEnabled = true;
+
+    function playClickSound() {
+      if (sfxEnabled) {
+        const soundClone = clickSound.cloneNode();
+        soundClone.volume = 0.6;
+        soundClone.play().catch(() => {});
+      }
+    }
+
+    function toggleMusic() {
+      musicEnabled = !musicEnabled;
+      const btn = document.getElementById('music-toggle');
+      if (musicEnabled) {
+        bgMusic.play().catch(e => console.log("Autoplay prevented:", e));
+        btn.innerText = "🎵 Music: ON";
+      } else {
+        bgMusic.pause();
+        btn.innerText = "🎵 Music: OFF";
+      }
+    }
+
+    function toggleSFX() {
+      sfxEnabled = !sfxEnabled;
+      document.getElementById('sfx-toggle').innerText = sfxEnabled ? "🔊 SFX: ON" : "🔇 SFX: OFF";
+    }
+
+    // --- GAME STATE ---
+    let cookies = 0;
+    let cookiesPerClick = 1;
+    let cookiesPerSecond = 0;
+
+    let clickCost = 10;
+    let clickLevel = 0;
+
+    let cursorCost = 15;
+    let cursorCount = 0;
+
+    let grandmaCost = 100;
+    let grandmaCount = 0;
+
+    let farmCost = 1100;
+    let farmCount = 0;
+
+    // --- MULTI-TOUCH / TAP HANDLING ---
+    const cookieImg = document.getElementById('cookie-img');
+
+    // 'touchstart' provides immediate tap response on mobile without 300ms click delays
+    cookieImg.addEventListener('touchstart', (e) => {
+      e.preventDefault(); // Prevents simulated mouse events / zoom
+      
+      // Multi-touch support: Count every finger tap!
+      const touches = e.changedTouches.length;
+      cookies += (cookiesPerClick * touches);
+      
+      playClickSound();
+      updateDisplay();
+
+      // Trigger shrink animation on touch
+      cookieImg.style.transform = 'scale(0.90)';
+    }, { passive: false });
+
+    cookieImg.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      cookieImg.style.transform = 'scale(1)';
+    });
+
+    // Standard Desktop Click fallback
+    cookieImg.addEventListener('click', (e) => {
+      // If it was already triggered by touch, skip mouse click
+      if (e.detail === 0) return; 
+      cookies += cookiesPerClick;
+      playClickSound();
+      updateDisplay();
+    });
+
+    // --- PURCHASE LOGIC ---
+    function buyClickUpgrade() {
+      if (cookies >= clickCost) {
+        cookies -= clickCost;
+        cookiesPerClick += 1;
+        clickLevel += 1;
+        clickCost = Math.floor(clickCost * 1.8);
+        updateDisplay();
+      }
+    }
+
+    function buyCursor() {
+      if (cookies >= cursorCost) {
+        cookies -= cursorCost;
+        cursorCount += 1;
+        cookiesPerSecond += 1;
+        cursorCost = Math.floor(cursorCost * 1.15);
+        updateDisplay();
+      }
+    }
+
+    function buyGrandma() {
+      if (cookies >= grandmaCost) {
+        cookies -= grandmaCost;
+        grandmaCount += 1;
+        cookiesPerSecond += 8;
+        grandmaCost = Math.floor(grandmaCost * 1.15);
+        updateDisplay();
+      }
+    }
+
+    function buyFarm() {
+      if (cookies >= farmCost) {
+        cookies -= farmCost;
+        farmCount += 1;
+        cookiesPerSecond += 47;
+        farmCost = Math.floor(farmCost * 1.15);
+        updateDisplay();
+      }
+    }
+
+    // --- UPDATE UI ---
+    function updateDisplay() {
+      document.getElementById('score-display').innerText = Math.floor(cookies).toLocaleString() + ' Cookies';
+      document.getElementById('cpc-display').innerText = 'per click: ' + cookiesPerClick.toLocaleString();
+      document.getElementById('cps-display').innerText = 'per second: ' + cookiesPerSecond.toLocaleString();
+
+      document.getElementById('click-info').innerText = `Cost: ${clickCost.toLocaleString()} | (+1/click) | Level: ${clickLevel}`;
+      document.getElementById('cursor-info').innerText = `Cost: ${cursorCost.toLocaleString()} | (+1/s) | Owned: ${cursorCount}`;
+      document.getElementById('grandma-info').innerText = `Cost: ${grandmaCost.toLocaleString()} | (+8/s) | Owned: ${grandmaCount}`;
+      document.getElementById('farm-info').innerText = `Cost: ${farmCost.toLocaleString()} | (+47/s) | Owned: ${farmCount}`;
+
+      toggleButtonState('click-btn', clickCost, 'affordable-click');
+      toggleButtonState('cursor-btn', cursorCost, 'affordable-building');
+      toggleButtonState('grandma-btn', grandmaCost, 'affordable-building');
+      toggleButtonState('farm-btn', farmCost, 'affordable-building');
+    }
+
+    function toggleButtonState(btnId, cost, cssClass) {
+      const btn = document.getElementById(btnId);
+      if (cookies >= cost) {
+        btn.classList.add(cssClass);
+      } else {
+        btn.classList.remove(cssClass);
+      }
+    }
+
+    // --- PASSIVE COOKIE LOOP ---
+    setInterval(() => {
+      cookies += cookiesPerSecond;
+      updateDisplay();
+    }, 1000);
+  </script>
+</body>
+</html>
